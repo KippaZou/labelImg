@@ -126,13 +126,13 @@ class MainWindow(QMainWindow, WindowMixin):
         self.itemsToShapes = {}
         self.shapesToItems = {}
         self.prevLabelText = ''
-
+        # box labels 垂直布局
         listLayout = QVBoxLayout()
         listLayout.setContentsMargins(0, 0, 0, 0)
 
         # Create a widget for using default label
         # 默认标签，所有框默认为一个标签
-        self.useDefaultLabelCheckbox = QCheckBox(u'Use default label')
+        self.useDefaultLabelCheckbox = QCheckBox(u'默认标签')
         self.useDefaultLabelCheckbox.setChecked(False)
         self.defaultLabelTextLine = QLineEdit()
         # 水平佈局
@@ -143,18 +143,22 @@ class MainWindow(QMainWindow, WindowMixin):
         useDefaultLabelContainer.setLayout(useDefaultLabelQHBoxLayout)
 
         # Create a widget for edit and diffc button
-        self.diffcButton = QCheckBox(u'difficult')
-        self.diffcButton.setChecked(False)
-        self.diffcButton.stateChanged.connect(self.btnstate)
+        # 是否标注difficult，如果选中，则在生成的xml里的bndbox中difficult值为1
+        # self.diffcButton = QCheckBox(u'difficult')
+        # self.diffcButton.setChecked(False)
+        # self.diffcButton.stateChanged.connect(self.btnstate)
+        # # 貌似并没有起作用
         self.editButton = QToolButton()
         self.editButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
         # Add some of widgets to listLayout
+        #
         listLayout.addWidget(self.editButton)
-        listLayout.addWidget(self.diffcButton)
+        # listLayout.addWidget(self.diffcButton)
         listLayout.addWidget(useDefaultLabelContainer)
 
         # Create and add a widget for showing current label items
+        # 实例化一个item base 的列表，显示当前标注条目
         self.labelList = QListWidget()
         labelListContainer = QWidget()
         labelListContainer.setLayout(listLayout)
@@ -165,11 +169,12 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelList.itemChanged.connect(self.labelItemChanged)
         listLayout.addWidget(self.labelList)
 
-        self.dock = QDockWidget(u'Box Labels', self)
+        self.dock = QDockWidget(u'方框标签', self)
         self.dock.setObjectName(u'Labels')
         self.dock.setWidget(labelListContainer)
 
         # Tzutalin 20160906 : Add file list and dock to move faster
+        # 文件列表
         self.fileListWidget = QListWidget()
         self.fileListWidget.itemDoubleClicked.connect(self.fileitemDoubleClicked)
         filelistLayout = QVBoxLayout()
@@ -177,19 +182,22 @@ class MainWindow(QMainWindow, WindowMixin):
         filelistLayout.addWidget(self.fileListWidget)
         fileListContainer = QWidget()
         fileListContainer.setLayout(filelistLayout)
-        self.filedock = QDockWidget(u'File List', self)
+        self.filedock = QDockWidget(u'文件列表', self)
         self.filedock.setObjectName(u'Files')
         self.filedock.setWidget(fileListContainer)
-
+        #
         self.zoomWidget = ZoomWidget()
+        #
         self.colorDialog = ColorDialog(parent=self)
-
+        #
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomRequest)
 
         scroll = QScrollArea()
         scroll.setWidget(self.canvas)
+        # 窗口部件可以改变大小
         scroll.setWidgetResizable(True)
+        # 水平和垂直滚动条
         self.scrollBars = {
             Qt.Vertical: scroll.verticalScrollBar(),
             Qt.Horizontal: scroll.horizontalScrollBar()
@@ -212,6 +220,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
 
         # Actions
+        # 快捷键和对应的槽函数
         action = partial(newAction, self)
         quit = action('&Quit', self.close,
                       'Ctrl+Q', 'quit', u'Quit application')
@@ -221,10 +230,10 @@ class MainWindow(QMainWindow, WindowMixin):
 
         opendir = action('&Open Dir', self.openDirDialog,
                          'Ctrl+u', 'open', u'Open Dir')
-
+        # 改变默认保存标注的文件夹
         changeSavedir = action('&Change Save Dir', self.changeSavedirDialog,
                                'Ctrl+r', 'open', u'Change default saved Annotation dir')
-
+        # 打开标注
         openAnnotation = action('&Open Annotation', self.openAnnotationDialog,
                                 'Ctrl+Shift+O', 'open', u'Open Annotation')
 
@@ -792,7 +801,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.canvas.selectShape(self.itemsToShapes[item])
             shape = self.itemsToShapes[item]
             # Add Chris
-            self.diffcButton.setChecked(shape.difficult)
+            # self.diffcButton.setChecked(shape.difficult)
 
     def labelItemChanged(self, item):
         shape = self.itemsToShapes[item]
@@ -825,7 +834,7 @@ class MainWindow(QMainWindow, WindowMixin):
             text = self.defaultLabelTextLine.text()
 
         # Add Chris
-        self.diffcButton.setChecked(False)
+        # self.diffcButton.setChecked(False)
         if text is not None:
             self.prevLabelText = text
             generate_color = generateColorByText(text)
@@ -1118,6 +1127,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.statusBar().show()
 
     def openAnnotationDialog(self, _value=False):
+        # 需要首先打开图片
         if self.filePath is None:
             self.statusBar().showMessage('Please select image first')
             self.statusBar().show()
@@ -1228,11 +1238,12 @@ class MainWindow(QMainWindow, WindowMixin):
 
         if filename:
             self.loadFile(filename)
-
+    # 打开文件
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
         path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
+        # 打开文件的格式为图片
         formats = ['*.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
         filters = "Image & Label files (%s)" % ' '.join(formats + ['*%s' % LabelFile.suffix])
         filename = QFileDialog.getOpenFileName(self, '%s - Choose Image or Label file' % __appname__, path, filters)
@@ -1418,6 +1429,11 @@ def get_main_app(argv=[]):
                          'data', 'predefined_classes.txt'))
     win.show()
     return app, win
+
+# 导致程序崩溃的几个原因：
+# 1.读取的xml格式不对
+
+
 
 
 def main():
