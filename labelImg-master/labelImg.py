@@ -104,6 +104,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.usingYoloFormat = False
 
         # For loading all image under a directory
+        # 图片列表
         self.mImgList = []
         self.dirname = None
         self.labelHist = []
@@ -279,11 +280,11 @@ class MainWindow(QMainWindow, WindowMixin):
                               'Ctrl+Shift+A', 'expert', u'Switch to advanced mode',
                               checkable=True)
 
-        hideAll = action('&Hide\nRectBox', partial(self.togglePolygons, False),
-                         'Ctrl+H', 'hide', u'Hide all Boxs',
+        hideAll = action('&隐藏\n方框', partial(self.togglePolygons, False),
+                         'Ctrl+H', 'hide', u'隐藏所有方框',
                          enabled=False)
-        showAll = action('&Show\nRectBox', partial(self.togglePolygons, True),
-                         'Ctrl+A', 'hide', u'Show all Boxs',
+        showAll = action('&显示\n方框', partial(self.togglePolygons, True),
+                         'Ctrl+A', 'hide', u'显示所有方框',
                          enabled=False)
 
         help = action('&Tutorial', self.showTutorialDialog, None, 'help', u'Show demos')
@@ -753,7 +754,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.addLabel(shape)
 
         self.canvas.loadShapes(s)
-
+    # 保存标注结果为xml
     def saveLabels(self, annotationFilePath):
         annotationFilePath = ustr(annotationFilePath)
         if self.labelFile is None:
@@ -770,6 +771,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
         # Can add differrent annotation formats here
+        # 保存xml或txt
         try:
             if self.usingPascalVocFormat is True:
                 annotationFilePath += XML_EXT
@@ -866,7 +868,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def addZoom(self, increment=10):
         self.setZoom(self.zoomWidget.value() + increment)
-
+    # 调整图像大小
     def zoomRequest(self, delta):
         # get the current scrollbar positions
         # calculate the percentages ~ coordinates
@@ -925,13 +927,16 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoomMode = self.FIT_WINDOW if value else self.MANUAL_ZOOM
         self.adjustScale()
 
+    #设置合适的宽度
     def setFitWidth(self, value=True):
         if value:
             self.actions.fitWindow.setChecked(False)
         self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjustScale()
 
+    #设置按下item的开关
     def togglePolygons(self, value):
+        # 全部按下
         for item, shape in self.itemsToShapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
@@ -1187,6 +1192,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.paintCanvas()
             self.saveFile()
 
+    # 打开上一个图片
     def openPrevImg(self, _value=False):
         # Proceding prev image without dialog if having any label
         if self.autoSaving.isChecked():
@@ -1205,13 +1211,14 @@ class MainWindow(QMainWindow, WindowMixin):
 
         if self.filePath is None:
             return
-
+        # 图片列表中当前图片的索引
         currIndex = self.mImgList.index(self.filePath)
         if currIndex - 1 >= 0:
             filename = self.mImgList[currIndex - 1]
             if filename:
+                # 打开上一个图片
                 self.loadFile(filename)
-
+    # 打开下一个图片
     def openNextImg(self, _value=False):
         # Proceding prev image without dialog if having any label
         if self.autoSaving.isChecked():
@@ -1251,14 +1258,17 @@ class MainWindow(QMainWindow, WindowMixin):
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
             self.loadFile(filename)
-
+    # 保存标注结果，到本地
     def saveFile(self, _value=False):
+        # 如果设置了默认保存路径，则点击保存后就保存到了相应路径。
         if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
             if self.filePath:
+                # 返回文件名。eg:path="D:\CSDN",os.path.basename(path)=CSDN
                 imgFileName = os.path.basename(self.filePath)
                 savedFileName = os.path.splitext(imgFileName)[0]
                 savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
                 self._saveFile(savedPath)
+        # 如果没有设置，则直接保存在图片统一文件夹下。
         else:
             imgFileDir = os.path.dirname(self.filePath)
             imgFileName = os.path.basename(self.filePath)
@@ -1284,7 +1294,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if dlg.exec_():
             return dlg.selectedFiles()[0]
         return ''
-
+    # 保存标注结果
     def _saveFile(self, annotationFilePath):
         if annotationFilePath and self.saveLabels(annotationFilePath):
             self.setClean()
