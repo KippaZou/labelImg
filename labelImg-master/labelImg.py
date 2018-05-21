@@ -35,15 +35,20 @@ from libs.labelDialog import LabelDialog
 from libs.colorDialog import ColorDialog
 from libs.labelFile import LabelFile, LabelFileError
 from libs.toolBar import ToolBar
-from libs.pascal_voc_io import PascalVocReader
-from libs.pascal_voc_io import XML_EXT
-from libs.yolo_io import YoloReader
-from libs.yolo_io import TXT_EXT
+# 这两个文件读写xml
+# from libs.pascal_voc_io import PascalVocReader
+# from libs.pascal_voc_io import XML_EXT
+# 这两个文件读写txt
+# from libs.yolo_io import YoloReader
+# from libs.yolo_io import TXT_EXT
 from libs.ustr import ustr
 from libs.version import __version__
 
 __appname__ = 'labelImg1.0'
 
+XML_EXT = '.xml'
+ENCODE_METHOD = 'utf-8'
+TXT_EXT = '.txt'
 # Utility functions and classes.
 
 def have_qstring():
@@ -100,7 +105,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Save as Pascal voc xml
         self.defaultSaveDir = None
-        self.usingPascalVocFormat = True
+        # self.usingPascalVocFormat = True
         self.usingYoloFormat = False
 
         # For loading all image under a directory
@@ -235,8 +240,8 @@ class MainWindow(QMainWindow, WindowMixin):
         changeSavedir = action('&Change Save Dir', self.changeSavedirDialog,
                                'Ctrl+r', 'open', u'Change default saved Annotation dir')
         # 打开标注
-        openAnnotation = action('&Open Annotation', self.openAnnotationDialog,
-                                'Ctrl+Shift+O', 'open', u'Open Annotation')
+        # openAnnotation = action('&Open Annotation', self.openAnnotationDialog,
+        #                         'Ctrl+Shift+O', 'open', u'Open Annotation')
 
         openNextImg = action('&Next Image', self.openNextImg,
                              'd', 'next', u'Open Next')
@@ -250,8 +255,8 @@ class MainWindow(QMainWindow, WindowMixin):
         save = action('&Save', self.saveFile,
                       'Ctrl+S', 'save', u'Save labels to file', enabled=False)
 
-        save_format = action('&PascalVOC', self.change_format,
-                      'Ctrl+', 'format_voc', u'Change save format', enabled=True)
+        # save_format = action('&PascalVOC', self.change_format,
+        #               'Ctrl+', 'format_voc', u'Change save format', enabled=True)
 
         saveAs = action('&Save As', self.saveFileAs,
                         'Ctrl+Shift+S', 'save-as', u'Save labels to a different file', enabled=False)
@@ -345,7 +350,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.popLabelListMenu)
 
         # Store actions for further handling.
-        self.actions = struct(save=save, save_format=save_format, saveAs=saveAs, open=open, close=close,
+        self.actions = struct(save=save,  saveAs=saveAs, open=open, close=close,
                               resetAll = resetAll,
                               lineColor=color1, create=create, delete=delete, edit=edit, copy=copy,
                               createMode=createMode, editMode=editMode, advancedMode=advancedMode,
@@ -385,7 +390,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.lastLabel = None
 
         addActions(self.menus.file,
-                   (open, opendir, changeSavedir, openAnnotation, self.menus.recentFiles, save, save_format,
+                   (open, opendir, changeSavedir, self.menus.recentFiles, save,
                     saveAs, close, resetAll, quit))
         addActions(self.menus.help, (help, showInfo))
         addActions(self.menus.view, (
@@ -406,12 +411,12 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.tools = self.toolbar('Tools')
         self.actions.beginner = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, verify, save, save_format,
+            open, opendir, changeSavedir, openNextImg, openPrevImg, verify, save,
             None, create, copy, delete, None,
             zoomIn, zoom, zoomOut, fitWindow, fitWidth)
 
         self.actions.advanced = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
+            open, opendir, changeSavedir, openNextImg, openPrevImg, save,  None,
             createMode, editMode, None,
             hideAll, showAll)
 
@@ -453,7 +458,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.restoreState(settings.get(SETTING_WIN_STATE, QByteArray()))
         Shape.line_color = self.lineColor = QColor(settings.get(SETTING_LINE_COLOR, DEFAULT_LINE_COLOR))
         Shape.fill_color = self.fillColor = QColor(settings.get(SETTING_FILL_COLOR, DEFAULT_FILL_COLOR))
-        self.canvas.setDrawingColor(self.lineColor)
+        # self.canvas.setDrawingColor(self.lineColor)
         # Add chris
         Shape.difficult = self.difficult
 
@@ -487,24 +492,6 @@ class MainWindow(QMainWindow, WindowMixin):
         # Open Dir if deafult file
         if self.filePath and os.path.isdir(self.filePath):
             self.openDirDialog(dirpath=self.filePath)
-
-    ## Support Functions ##
-    def set_format(self, save_format):
-        if save_format == 'PascalVOC':
-            self.actions.save_format.setText("PascalVOC")
-            self.actions.save_format.setIcon(newIcon("format_voc"))
-            self.usingPascalVocFormat = True
-            self.usingYoloFormat = False
-
-        elif save_format == 'YOLO':
-            self.actions.save_format.setText("YOLO")
-            self.actions.save_format.setIcon(newIcon("format_yolo"))
-            self.usingPascalVocFormat = False
-            self.usingYoloFormat = True
-
-    def change_format(self):
-        if self.usingPascalVocFormat: self.set_format("YOLO")
-        elif self.usingYoloFormat: self.set_format("PascalVOC")
 
     def noShapes(self):
         return not self.itemsToShapes
@@ -767,25 +754,15 @@ class MainWindow(QMainWindow, WindowMixin):
                         fill_color=s.fill_color.getRgb(),
                         points=[(p.x(), p.y()) for p in s.points],
                        # add chris
-                        difficult = s.difficult)
+                       #  difficult = s.difficult
+                        )
 
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
-        # Can add differrent annotation formats here
-        # 保存xml或txt
+
         try:
-            if self.usingPascalVocFormat is True:
-                annotationFilePath += XML_EXT
-                print ('Img: ' + self.filePath + ' -> Its xml: ' + annotationFilePath)
-                self.labelFile.savePascalVocFormat(annotationFilePath, shapes, self.filePath, self.imageData,
-                                                   self.lineColor.getRgb(), self.fillColor.getRgb())
-            elif self.usingYoloFormat is True:
-                annotationFilePath += TXT_EXT
-                print ('Img: ' + self.filePath + ' -> Its txt: ' + annotationFilePath)
-                self.labelFile.saveYoloFormat(annotationFilePath, shapes, self.filePath, self.imageData, self.labelHist,
-                                                   self.lineColor.getRgb(), self.fillColor.getRgb())
-            else:
-                self.labelFile.save(annotationFilePath, shapes, self.filePath, self.imageData,
-                                    self.lineColor.getRgb(), self.fillColor.getRgb())
+            print ('Img: ' + self.filePath + ' -> Its xml: ' + annotationFilePath)
+            print(shapes)
+
             return True
         except LabelFileError as e:
             self.errorMessage(u'Error saving label data', u'<b>%s</b>' % e)
@@ -801,7 +778,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if item and self.canvas.editing():
             self._noSelectionSlot = True
             self.canvas.selectShape(self.itemsToShapes[item])
-            shape = self.itemsToShapes[item]
+            # shape = self.itemsToShapes[item]
             # Add Chris
             # self.diffcButton.setChecked(shape.difficult)
 
@@ -840,7 +817,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if text is not None:
             self.prevLabelText = text
             generate_color = generateColorByText(text)
-            shape = self.canvas.setLastLabel(text, generate_color, generate_color)
+            shape = self.canvas.setLastLabel(text)
             self.addLabel(shape)
             if self.beginner():  # Switch to edit mode.
                 self.canvas.setEditing(True)
@@ -852,7 +829,6 @@ class MainWindow(QMainWindow, WindowMixin):
             if text not in self.labelHist:
                 self.labelHist.append(text)
         else:
-            # self.canvas.undoLastLine()
             self.canvas.resetAllLines()
 
     def scrollRequest(self, delta, orientation):
@@ -997,29 +973,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self.addRecentFile(self.filePath)
             self.toggleActions(True)
 
-            # Label xml file and show bound box according to its filename
-            # if self.usingPascalVocFormat is True:
-            if self.defaultSaveDir is not None:
-                basename = os.path.basename(
-                    os.path.splitext(self.filePath)[0])
-                xmlPath = os.path.join(self.defaultSaveDir, basename + XML_EXT)
-                txtPath = os.path.join(self.defaultSaveDir, basename + TXT_EXT)
-
-                """Annotation file priority:
-                PascalXML > YOLO
-                """
-                if os.path.isfile(xmlPath):
-                    self.loadPascalXMLByFilename(xmlPath)
-                elif os.path.isfile(txtPath):
-                    self.loadYOLOTXTByFilename(txtPath)
-            else:
-                xmlPath = os.path.splitext(filePath)[0] + XML_EXT
-                txtPath = os.path.splitext(filePath)[0] + TXT_EXT
-                if os.path.isfile(xmlPath):
-                    self.loadPascalXMLByFilename(xmlPath)
-                elif os.path.isfile(txtPath):
-                    self.loadYOLOTXTByFilename(txtPath)
-
             self.setWindowTitle(__appname__ + ' ' + filePath)
 
             # Default : select last item if there is at least one item
@@ -1131,22 +1084,7 @@ class MainWindow(QMainWindow, WindowMixin):
                                      ('Change saved folder', self.defaultSaveDir))
         self.statusBar().show()
 
-    def openAnnotationDialog(self, _value=False):
-        # 需要首先打开图片
-        if self.filePath is None:
-            self.statusBar().showMessage('Please select image first')
-            self.statusBar().show()
-            return
 
-        path = os.path.dirname(ustr(self.filePath))\
-            if self.filePath else '.'
-        if self.usingPascalVocFormat:
-            filters = "Open Annotation XML file (%s)" % ' '.join(['*.xml'])
-            filename = ustr(QFileDialog.getOpenFileName(self,'%s - Choose a xml file' % __appname__, path, filters))
-            if filename:
-                if isinstance(filename, (tuple, list)):
-                    filename = filename[0]
-            self.loadPascalXMLByFilename(filename)
 
     def openDirDialog(self, _value=False, dirpath=None):
         if not self.mayContinue():
@@ -1383,34 +1321,6 @@ class MainWindow(QMainWindow, WindowMixin):
                     else:
                         self.labelHist.append(line)
 
-    def loadPascalXMLByFilename(self, xmlPath):
-        if self.filePath is None:
-            return
-        if os.path.isfile(xmlPath) is False:
-            return
-
-        self.set_format("PascalVOC")
-
-        tVocParseReader = PascalVocReader(xmlPath)
-        shapes = tVocParseReader.getShapes()
-        self.loadLabels(shapes)
-        self.canvas.verified = tVocParseReader.verified
-
-    def loadYOLOTXTByFilename(self, txtPath):
-        if self.filePath is None:
-            return
-        if os.path.isfile(txtPath) is False:
-            return
-
-        self.set_format("YOLO")
-        tYoloParseReader = YoloReader(txtPath, self.image)
-        shapes = tYoloParseReader.getShapes()
-        print (shapes)
-        self.loadLabels(shapes)
-        self.canvas.verified = tYoloParseReader.verified
-
-
-
 def inverted(color):
     return QColor(*[255 - v for v in color.getRgb()])
 
@@ -1439,9 +1349,6 @@ def get_main_app(argv=[]):
                          'data', 'predefined_classes.txt'))
     win.show()
     return app, win
-
-# 导致程序崩溃的几个原因：
-# 1.读取的xml格式不对
 
 
 
