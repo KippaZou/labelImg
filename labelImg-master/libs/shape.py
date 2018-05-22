@@ -37,6 +37,7 @@ class Shape(object):
 
     def __init__(self, label=None, line_color=None):
         self.label = label
+        self.depth = 0.0
         self.points = []
         self.fill = False
         self.selected = False

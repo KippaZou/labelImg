@@ -3,6 +3,7 @@
 import codecs
 import requests
 import os.path
+import json
 import re
 import sys
 import subprocess
@@ -44,6 +45,7 @@ from libs.toolBar import ToolBar
 # from libs.yolo_io import TXT_EXT
 from libs.ustr import ustr
 from libs.version import __version__
+# from libs.loadJson import *
 
 __appname__ = 'labelImg1.0'
 
@@ -116,6 +118,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelHist = []
         self.lastOpenDir = None
 
+        self.pic_json_string = None
         # Whether we need to save or not.
         self.dirty = False
 
@@ -447,13 +450,13 @@ class MainWindow(QMainWindow, WindowMixin):
         position = settings.get(SETTING_WIN_POSE, QPoint(0, 0))
         self.resize(size)
         self.move(position)
-        saveDir = ustr(settings.get(SETTING_SAVE_DIR, None))
+        # saveDir = ustr(settings.get(SETTING_SAVE_DIR, None))
         self.lastOpenDir = ustr(settings.get(SETTING_LAST_OPEN_DIR, None))
-        if saveDir is not None and os.path.exists(saveDir):
-            self.defaultSaveDir = saveDir
-            self.statusBar().showMessage('%s started. Annotation will be saved to %s' %
-                                         (__appname__, self.defaultSaveDir))
-            self.statusBar().show()
+        # if saveDir is not None and os.path.exists(saveDir):
+        #     self.defaultSaveDir = saveDir
+        #     self.statusBar().showMessage('%s started. Annotation will be saved to server' %
+        #                                  (__appname__))
+        #     self.statusBar().show()
 
         self.restoreState(settings.get(SETTING_WIN_STATE, QByteArray()))
         Shape.line_color = self.lineColor = QColor(settings.get(SETTING_LINE_COLOR, DEFAULT_LINE_COLOR))
@@ -717,7 +720,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelList.takeItem(self.labelList.row(item))
         del self.shapesToItems[shape]
         del self.itemsToShapes[item]
-
+    # 加载标注
     def loadLabels(self, shapes):
         s = []
         for label, points, line_color, fill_color in shapes:
@@ -739,7 +742,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 shape.fill_color = generateColorByText(label)
 
             self.addLabel(shape)
-
+        #
         self.canvas.loadShapes(s)
     # 保存标注结果为xml
     def saveLabels(self, imgFileName):
@@ -924,6 +927,69 @@ class MainWindow(QMainWindow, WindowMixin):
         for item, shape in self.itemsToShapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
+    def boundingBox2float(self,boundingBox):
+        a = []
+        temp = boundingBox.split(',')
+        for i in range(len(temp)):
+            a.append(float(temp[i]))
+        return a
+
+    def readJsonFromMongo(self,imgFileName):
+        r = requests.get("http://127.0.0.1:12345", imgFileName)
+        pic_json_string = r.text
+        pic_json = json.loads(pic_json_string)
+        Result = pic_json["Result"]
+        regions = Result['regions']
+        lines = []
+        shapes = []
+        for i in range(len(regions)):
+            depth = [i]
+            points = []
+            point = self.boundingBox2float(regions[i]["boundingBox"])
+            lines.append(regions[i]['lines'])
+            for k in range(int(len(point) / 2)):
+                points.append([point[2 * k], point[2 * k + 1]])
+            label = ('大框' + str(i))
+            shapes.append(
+                {"depth": depth,
+                 "file_color": None,
+                 "label": label,
+                 "line_color": None,
+                 "points": points}
+            )
+
+        for i in range(len(lines)):
+            for j in range(len(lines[i])):
+                depth = [i, j]
+                points = []
+                point = self.boundingBox2float(lines[i][j]["boundingBox"])
+                words = lines[i][j]["words"]
+                for n in range(int(len(point) / 2)):
+                    points.append([point[2 * n], point[2 * n + 1]])
+                label = lines[i][j]['text']
+                shapes.append(
+                    {"depth": depth,
+                     "file_color": None,
+                     "label": label,
+                     "line_color": None,
+                     "points": points}
+                )
+                for k in range(len(words)):
+                    poi = []
+                    dep = [i, j, k]
+                    poin = self.boundingBox2float(words[k]["boundingBox"])
+                    for m in range(int(len(poin) / 2)):
+                        poi.append([poin[2 * m], poin[2 * m + 1]])
+                    labe = words[k]["word"]
+                    shapes.append(
+                        {"depth": dep,
+                         "file_color": None,
+                         "label": labe,
+                         "line_color": None,
+                         "points": poi}
+                    )
+        return shapes, r.status_code
+
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
         self.resetState()
@@ -936,10 +1002,12 @@ class MainWindow(QMainWindow, WindowMixin):
         imgFileName = os.path.basename(filePath)
         # print(imgFileName)
         if imgFileName:
-            req = requests.get(URL, imgFileName)
-            self.pic_json_string = req.text
-            if req.status_code ==404 :
-                self.statusBar().showMessage("没有对应的标注")
+            a,b=self.readJsonFromMongo(imgFileName)
+            # req = requests.get(URL, imgFileName)
+            # self.pic_json_string = req.text
+            #
+            # if req.status_code ==404 :
+            #     self.statusBar().showMessage("没有对应的标注")
 
 
         unicodeFilePath = ustr(filePath)
@@ -962,8 +1030,8 @@ class MainWindow(QMainWindow, WindowMixin):
                     self.status("Error reading %s" % unicodeFilePath)
                     return False
                 self.imageData = self.labelFile.imageData
-                self.lineColor = QColor(*self.labelFile.lineColor)
-                self.fillColor = QColor(*self.labelFile.fillColor)
+                # self.lineColor = QColor(*self.labelFile.lineColor)
+                # self.fillColor = QColor(*self.labelFile.fillColor)
             else:
                 # Load image:
                 # read data first and store for saving into label file.
@@ -980,8 +1048,8 @@ class MainWindow(QMainWindow, WindowMixin):
             self.image = image
             self.filePath = unicodeFilePath
             self.canvas.loadPixmap(QPixmap.fromImage(image))
-            if self.labelFile:
-                self.loadLabels(self.labelFile.shapes)#
+            # if self.labelFile:
+            #     self.loadLabels(self.labelFile.shapes)#
             self.setClean()
             self.canvas.setEnabled(True)
             self.adjustScale(initial=True)
@@ -1179,7 +1247,7 @@ class MainWindow(QMainWindow, WindowMixin):
         path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
         # 打开文件的格式为图片
         formats = ['*.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
-        filters = "Image & Label files (%s)" % ' '.join(formats + ['*%s' % LabelFile.suffix])
+        filters = "Image & Label files (%s)" % ' '.join(formats)
         filename = QFileDialog.getOpenFileName(self, '%s - Choose Image or Label file' % __appname__, path, filters)
         if filename:
             if isinstance(filename, (tuple, list)):

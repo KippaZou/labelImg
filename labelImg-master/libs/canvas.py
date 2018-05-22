@@ -72,9 +72,11 @@ class Canvas(QtWidgets.QWidget):
 
     def setDrawingColor(self, qColor):
         self.drawingLineColor = qColor
-        print(self.drawingLineColor.getRgb())
+        # print(self.drawingLineColor.getRgb())
         self.drawingRectColor = qColor
-        self.line.line_color = qColor
+        # self.line.line_color = qColor
+        # self.lineColor = qColor
+        # self.current.line_color = qColor
 
     def enterEvent(self, ev):
         self.overrideCursor(self._cursor)
@@ -122,7 +124,7 @@ class Canvas(QtWidgets.QWidget):
             self.overrideCursor(CURSOR_DRAW)
             if self.current:
                 color = self.drawingLineColor
-                print("a",self.drawingLineColor.getRgb())
+                # print("a",self.drawingLineColor.getRgb())
                 if self.outOfPixmap(pos):
                     # Don't allow the user to draw outside the pixmap.
                     # Project the point to the pixmap's edges.
@@ -133,12 +135,12 @@ class Canvas(QtWidgets.QWidget):
                     # colorise to alert the user.
                     pos = self.current[0]
                     color = self.current.line_color
-                    print("*********",color.getRgb())
+                    # print("*********",color.getRgb())
                     self.overrideCursor(CURSOR_POINT)
                     self.current.highlightVertex(0, Shape.NEAR_VERTEX)
                 self.line[1] = pos
                 self.line.line_color = color
-                print("b",self.line.line_color.getRgb())
+                # print("b",self.line.line_color.getRgb())
                 self.repaint()
                 self.current.highlightClear()
             return
@@ -383,7 +385,6 @@ class Canvas(QtWidgets.QWidget):
     def paintEvent(self, event):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
-
         p = self._painter
         p.begin(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -401,6 +402,7 @@ class Canvas(QtWidgets.QWidget):
                 shape.fill = shape.selected or shape == self.hShape
                 shape.paint(p)
         if self.current:
+            self.current.line_color=self.drawingLineColor
             self.current.paint(p)
             self.line.paint(p)
         if self.selectedShapeCopy:
