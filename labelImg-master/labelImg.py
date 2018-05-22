@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import codecs
+import requests
 import os.path
 import re
 import sys
 import subprocess
 from functools import partial
 from collections import defaultdict
-
+URL = 'http://127.0.0.1:12345'
 try:
     from PyQt5.QtGui import *
     from PyQt5.QtCore import *
@@ -71,7 +72,7 @@ class WindowMixin(object):
     def toolbar(self, title, actions=None):
         toolbar = ToolBar(title)
         toolbar.setObjectName(u'%sToolBar' % title)
-        # toolbar.setOrientation(Qt.Vertical)
+        toolbar.setOrientation(Qt.Horizontal)
         # 工具條樣式，文本位於圖標下方
         toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         if actions:
@@ -228,52 +229,52 @@ class MainWindow(QMainWindow, WindowMixin):
         # Actions
         # 快捷键和对应的槽函数
         action = partial(newAction, self)
-        quit = action('&Quit', self.close,
-                      'Ctrl+Q', 'quit', u'Quit application')
+        quit = action('&退出', self.close,
+                      'Ctrl+Q', 'quit', u'退出应用')
 
-        open = action('&Open', self.openFile,
-                      'Ctrl+O', 'open', u'Open image or label file')
+        open = action('&打开图片', self.openFile,
+                      'Ctrl+O', 'open', u'打开图片')
 
-        opendir = action('&Open Dir', self.openDirDialog,
-                         'Ctrl+u', 'open', u'Open Dir')
+        opendir = action('&打开文件夹', self.openDirDialog,
+                         'Ctrl+u', 'open', u'打开包含图片的文件夹')
         # 改变默认保存标注的文件夹
-        changeSavedir = action('&Change Save Dir', self.changeSavedirDialog,
-                               'Ctrl+r', 'open', u'Change default saved Annotation dir')
+        # changeSavedir = action('&Change Save Dir', self.changeSavedirDialog,
+        #                        'Ctrl+r', 'open', u'Change default saved Annotation dir')
         # 打开标注
         # openAnnotation = action('&Open Annotation', self.openAnnotationDialog,
         #                         'Ctrl+Shift+O', 'open', u'Open Annotation')
 
-        openNextImg = action('&Next Image', self.openNextImg,
-                             'd', 'next', u'Open Next')
+        openNextImg = action('&下一张', self.openNextImg,
+                             'd', 'next', u'打开下一站')
 
-        openPrevImg = action('&Prev Image', self.openPrevImg,
-                             'a', 'prev', u'Open Prev')
+        openPrevImg = action('&上一张', self.openPrevImg,
+                             'a', 'prev', u'打开上一张')
 
-        verify = action('&Verify Image', self.verifyImg,
-                        'space', 'verify', u'Verify Image')
+        # verify = action('&Verify Image', self.verifyImg,
+        #                 'space', 'verify', u'Verify Image')
 
-        save = action('&Save', self.saveFile,
-                      'Ctrl+S', 'save', u'Save labels to file', enabled=False)
+        save = action('&保存', self.saveFile,
+                      'Ctrl+S', 'save', u'S保存标签', enabled=False)
 
         # save_format = action('&PascalVOC', self.change_format,
         #               'Ctrl+', 'format_voc', u'Change save format', enabled=True)
 
-        saveAs = action('&Save As', self.saveFileAs,
-                        'Ctrl+Shift+S', 'save-as', u'Save labels to a different file', enabled=False)
+        # saveAs = action('&Save As', self.saveFileAs,
+        #                 'Ctrl+Shift+S', 'save-as', u'Save labels to a different file', enabled=False)
 
-        close = action('&Close', self.closeFile, 'Ctrl+W', 'close', u'Close current file')
+        close = action('&关闭', self.closeFile, 'Ctrl+W', 'close', u'关闭应用')
 
-        resetAll = action('&ResetAll', self.resetAll, None, 'resetall', u'Reset all')
+        # resetAll = action('&ResetAll', self.resetAll, None, 'resetall', u'Reset all')
 
-        color1 = action('Box Line Color', self.chooseColor1,
-                        'Ctrl+L', 'color_line', u'Choose Box line color')
+        color1 = action('线条颜色', self.chooseColor1,
+                        'Ctrl+L', 'color_line', u'选择颜色')
 
-        createMode = action('Create\nRectBox', self.setCreateMode,
+        createMode = action('&创建标注', self.setCreateMode,
                             'w', 'new', u'Start drawing Boxs', enabled=False)
-        editMode = action('&Edit\nRectBox', self.setEditMode,
+        editMode = action('&编辑标注', self.setEditMode,
                           'Ctrl+J', 'edit', u'Move and edit Boxs', enabled=False)
 
-        create = action('Create\nRectBox', self.createShape,
+        create = action('创建标注', self.createShape,
                         'w', 'new', u'Draw a new Box', enabled=False)
         delete = action('Delete\nRectBox', self.deleteSelectedShape,
                         'Delete', 'delete', u'Delete', enabled=False)
@@ -285,15 +286,15 @@ class MainWindow(QMainWindow, WindowMixin):
                               'Ctrl+Shift+A', 'expert', u'Switch to advanced mode',
                               checkable=True)
 
-        hideAll = action('&隐藏\n方框', partial(self.togglePolygons, False),
+        hideAll = action('&隐藏方框', partial(self.togglePolygons, False),
                          'Ctrl+H', 'hide', u'隐藏所有方框',
                          enabled=False)
-        showAll = action('&显示\n方框', partial(self.togglePolygons, True),
+        showAll = action('&显示方框', partial(self.togglePolygons, True),
                          'Ctrl+A', 'hide', u'显示所有方框',
                          enabled=False)
 
-        help = action('&Tutorial', self.showTutorialDialog, None, 'help', u'Show demos')
-        showInfo = action('&Information', self.showInfoDialog, None, 'help', u'Information')
+        help = action('&教学', self.showTutorialDialog, None, 'help', u'Show demos')
+        showInfo = action('&信息', self.showInfoDialog, None, 'help', u'Information')
 
         zoom = QWidgetAction(self)
         zoom.setDefaultWidget(self.zoomWidget)
@@ -350,8 +351,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.popLabelListMenu)
 
         # Store actions for further handling.
-        self.actions = struct(save=save,  saveAs=saveAs, open=open, close=close,
-                              resetAll = resetAll,
+        self.actions = struct(save=save,  open=open, close=close,
                               lineColor=color1, create=create, delete=delete, edit=edit, copy=copy,
                               createMode=createMode, editMode=editMode, advancedMode=advancedMode,
                               shapeLineColor=shapeLineColor, shapeFillColor=shapeFillColor,
@@ -359,7 +359,7 @@ class MainWindow(QMainWindow, WindowMixin):
                               fitWindow=fitWindow, fitWidth=fitWidth,
                               zoomActions=zoomActions,
                               fileMenuActions=(
-                                  open, opendir, save, saveAs, close, resetAll, quit),
+                                  open, opendir, save,  close, quit),
                               beginner=(), advanced=(),
                               editMenu=(edit, copy, delete,
                                         None, color1),
@@ -368,14 +368,14 @@ class MainWindow(QMainWindow, WindowMixin):
                                                delete, shapeLineColor, shapeFillColor),
                               onLoadActive=(
                                   close, create, createMode, editMode),
-                              onShapesPresent=(saveAs, hideAll, showAll))
+                              onShapesPresent=(hideAll, showAll))
 
         self.menus = struct(
-            file=self.menu('&File'),
-            edit=self.menu('&Edit'),
-            view=self.menu('&View'),
-            help=self.menu('&Help'),
-            recentFiles=QMenu('Open &Recent'),
+            file=self.menu('&文件'),
+            edit=self.menu('&编辑'),
+            view=self.menu('&视图'),
+            help=self.menu('&帮助'),
+            recentFiles=QMenu('最近打开'),
             labelList=labelMenu)
 
         # Auto saving : Enable auto saving if pressing next
@@ -390,8 +390,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.lastLabel = None
 
         addActions(self.menus.file,
-                   (open, opendir, changeSavedir, self.menus.recentFiles, save,
-                    saveAs, close, resetAll, quit))
+                   (open, opendir,  self.menus.recentFiles, save,
+                     close,  quit))
         addActions(self.menus.help, (help, showInfo))
         addActions(self.menus.view, (
             self.autoSaving,
@@ -411,12 +411,12 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.tools = self.toolbar('Tools')
         self.actions.beginner = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, verify, save,
-            None, create, copy, delete, None,
-            zoomIn, zoom, zoomOut, fitWindow, fitWidth)
+            open, opendir, openNextImg, openPrevImg, save, None,
+            createMode, editMode, None,
+            hideAll, showAll)
 
         self.actions.advanced = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, save,  None,
+            open, opendir,  openNextImg, openPrevImg, save,  None,
             createMode, editMode, None,
             hideAll, showAll)
 
@@ -666,7 +666,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if not item: # If not selected Item, take the first one
             item = self.labelList.item(self.labelList.count()-1)
 
-        difficult = self.diffcButton.isChecked()
+        # difficult = self.diffcButton.isChecked()
 
         try:
             shape = self.itemsToShapes[item]
@@ -720,11 +720,11 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def loadLabels(self, shapes):
         s = []
-        for label, points, line_color, fill_color, difficult in shapes:
+        for label, points, line_color, fill_color in shapes:
             shape = Shape(label=label)
             for x, y in points:
                 shape.addPoint(QPointF(x, y))
-            shape.difficult = difficult
+            # shape.difficult = difficult
             shape.close()
             s.append(shape)
 
@@ -742,8 +742,8 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.canvas.loadShapes(s)
     # 保存标注结果为xml
-    def saveLabels(self, annotationFilePath):
-        annotationFilePath = ustr(annotationFilePath)
+    def saveLabels(self, imgFileName):
+        imgFileName = ustr(imgFileName)
         if self.labelFile is None:
             self.labelFile = LabelFile()
             self.labelFile.verified = self.canvas.verified
@@ -756,16 +756,24 @@ class MainWindow(QMainWindow, WindowMixin):
                        # add chris
                        #  difficult = s.difficult
                         )
-
+        print(type(self.canvas.shapes))
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
+        print(shapes)
+        results = {}
+        results['imgFileName'] = imgFileName
+        # pic_json = dict(
+        #
+        # )
+        # #####################################
+        results['shapes'] = shapes
 
         try:
-            print ('Img: ' + self.filePath + ' -> Its xml: ' + annotationFilePath)
-            print(shapes)
-
-            return True
-        except LabelFileError as e:
-            self.errorMessage(u'Error saving label data', u'<b>%s</b>' % e)
+            # print ('Img: ' + self.filePath + ' -> Its xml: ' + imgFileName)
+            request = requests.post(URL, json=results)
+            return (True if request.status_code==200
+                    else False)
+        except :
+            print('error save label')
             return False
 
     def copySelectedShape(self):
@@ -828,8 +836,8 @@ class MainWindow(QMainWindow, WindowMixin):
 
             if text not in self.labelHist:
                 self.labelHist.append(text)
-        else:
-            self.canvas.resetAllLines()
+        # else:
+        #     self.canvas.resetAllLines()
 
     def scrollRequest(self, delta, orientation):
         units = - delta / (8 * 15)
@@ -925,6 +933,14 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Make sure that filePath is a regular python string, rather than QString
         filePath = str(filePath)
+        imgFileName = os.path.basename(filePath)
+        # print(imgFileName)
+        if imgFileName:
+            req = requests.get(URL, imgFileName)
+            self.pic_json_string = req.text
+            if req.status_code ==404 :
+                self.statusBar().showMessage("没有对应的标注")
+
 
         unicodeFilePath = ustr(filePath)
         # Tzutalin 20160906 : Add file list and dock to move faster
@@ -965,7 +981,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.filePath = unicodeFilePath
             self.canvas.loadPixmap(QPixmap.fromImage(image))
             if self.labelFile:
-                self.loadLabels(self.labelFile.shapes)
+                self.loadLabels(self.labelFile.shapes)#
             self.setClean()
             self.canvas.setEnabled(True)
             self.adjustScale(initial=True)
@@ -1066,23 +1082,6 @@ class MainWindow(QMainWindow, WindowMixin):
         images.sort(key=lambda x: x.lower())
         return images
 
-    def changeSavedirDialog(self, _value=False):
-        if self.defaultSaveDir is not None:
-            path = ustr(self.defaultSaveDir)
-        else:
-            path = '.'
-
-        dirpath = ustr(QFileDialog.getExistingDirectory(self,
-                                                       '%s - Save annotations to the directory' % __appname__, path,
-                                                        QFileDialog.ShowDirsOnly
-                                                       | QFileDialog.DontResolveSymlinks))
-
-        if dirpath is not None and len(dirpath) > 1:
-            self.defaultSaveDir = dirpath
-
-        self.statusBar().showMessage('%s . Annotation will be saved to %s' %
-                                     ('Change saved folder', self.defaultSaveDir))
-        self.statusBar().show()
 
 
 
@@ -1132,15 +1131,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
     # 打开上一个图片
     def openPrevImg(self, _value=False):
-        # Proceding prev image without dialog if having any label
         if self.autoSaving.isChecked():
-            if self.defaultSaveDir is not None:
-                if self.dirty is True:
-                    self.saveFile()
-            else:
-                self.changeSavedirDialog()
-                return
-
+            if self.dirty is True:
+                self.saveFile()
         if not self.mayContinue():
             return
 
@@ -1158,14 +1151,10 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.loadFile(filename)
     # 打开下一个图片
     def openNextImg(self, _value=False):
-        # Proceding prev image without dialog if having any label
+
         if self.autoSaving.isChecked():
-            if self.defaultSaveDir is not None:
-                if self.dirty is True:
-                    self.saveFile()
-            else:
-                self.changeSavedirDialog()
-                return
+            if self.dirty is True:
+                self.saveFile()
 
         if not self.mayContinue():
             return
@@ -1199,25 +1188,27 @@ class MainWindow(QMainWindow, WindowMixin):
     # 保存标注结果，到本地
     def saveFile(self, _value=False):
         # 如果设置了默认保存路径，则点击保存后就保存到了相应路径。
-        if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
-            if self.filePath:
-                # 返回文件名。eg:path="D:\CSDN",os.path.basename(path)=CSDN
-                imgFileName = os.path.basename(self.filePath)
-                savedFileName = os.path.splitext(imgFileName)[0]
-                savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
-                self._saveFile(savedPath)
-        # 如果没有设置，则直接保存在图片统一文件夹下。
-        else:
-            imgFileDir = os.path.dirname(self.filePath)
+        # if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
+        if self.filePath:
+            # 返回文件名。eg:path="D:\CSDN",os.path.basename(path)=CSDN
             imgFileName = os.path.basename(self.filePath)
-            savedFileName = os.path.splitext(imgFileName)[0]
-            savedPath = os.path.join(imgFileDir, savedFileName)
-            self._saveFile(savedPath if self.labelFile
-                           else self.saveFileDialog())
+            # savedFileName = os.path.splitext(imgFileName)[0]
+            # print(savedFileName)
+            print(imgFileName)
+            # savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
+            self._saveFile(imgFileName)
+        # 如果没有设置，则直接保存在图片统一文件夹下。
+        # else:
+        #     imgFileDir = os.path.dirname(self.filePath)
+        #     imgFileName = os.path.basename(self.filePath)
+        #     savedFileName = os.path.splitext(imgFileName)[0]
+        #     savedPath = os.path.join(imgFileDir, savedFileName)
+        #     self._saveFile(savedPath if self.labelFile
+        #                    else self.saveFileDialog())
 
-    def saveFileAs(self, _value=False):
-        assert not self.image.isNull(), "cannot save empty image"
-        self._saveFile(self.saveFileDialog())
+    # def saveFileAs(self, _value=False):
+    #     assert not self.image.isNull(), "cannot save empty image"
+    #     self._saveFile(self.saveFileDialog())
 
     def saveFileDialog(self):
         caption = '%s - Choose File' % __appname__
@@ -1233,11 +1224,13 @@ class MainWindow(QMainWindow, WindowMixin):
             return dlg.selectedFiles()[0]
         return ''
     # 保存标注结果
-    def _saveFile(self, annotationFilePath):
-        if annotationFilePath and self.saveLabels(annotationFilePath):
+    def _saveFile(self, imgFileName):
+        if imgFileName and self.saveLabels(imgFileName):
             self.setClean()
-            self.statusBar().showMessage('Saved to  %s' % annotationFilePath)
+            self.statusBar().showMessage('Saved to  %s' % imgFileName)
             self.statusBar().show()
+        else:
+            self.statusBar().showMessage('消息未保存')
 
     def closeFile(self, _value=False):
         if not self.mayContinue():
@@ -1246,13 +1239,13 @@ class MainWindow(QMainWindow, WindowMixin):
         self.setClean()
         self.toggleActions(False)
         self.canvas.setEnabled(False)
-        self.actions.saveAs.setEnabled(False)
+        # self.actions.saveAs.setEnabled(False)
 
-    def resetAll(self):
-        self.settings.reset()
-        self.close()
-        proc = QProcess()
-        proc.startDetached(os.path.abspath(__file__))
+    # def resetAll(self):
+    #     self.settings.reset()
+    #     self.close()
+    #     proc = QProcess()
+    #     proc.startDetached(os.path.abspath(__file__))
 
     def mayContinue(self):
         return not (self.dirty and not self.discardChangesDialog())

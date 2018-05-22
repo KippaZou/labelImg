@@ -1,32 +1,30 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-
 try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
+    from PyQt5 import QtGui
 except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
+    from PyQt4 import QtGui
 
-from libs.lib import distance
-import sys
+from .lib import distance
 
-DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)
-DEFAULT_FILL_COLOR = QColor(255, 0, 0, 128)
-DEFAULT_SELECT_LINE_COLOR = QColor(255, 255, 255)
-DEFAULT_SELECT_FILL_COLOR = QColor(0, 128, 255, 155)
-DEFAULT_VERTEX_FILL_COLOR = QColor(0, 255, 0, 255)
-DEFAULT_HVERTEX_FILL_COLOR = QColor(255, 0, 0)
+
+# TODO(unknown):
+# - [opt] Store paths instead of creating new ones at each paint.
+
+
+DEFAULT_LINE_COLOR = QtGui.QColor(0, 255, 0, 128)
+DEFAULT_FILL_COLOR = QtGui.QColor(255, 0, 0, 128)
+DEFAULT_SELECT_LINE_COLOR = QtGui.QColor(255, 255, 255)
+DEFAULT_SELECT_FILL_COLOR = QtGui.QColor(0, 128, 255, 155)
+DEFAULT_VERTEX_FILL_COLOR = QtGui.QColor(0, 255, 0, 255)
+DEFAULT_HVERTEX_FILL_COLOR = QtGui.QColor(255, 0, 0)
 
 
 class Shape(object):
-    P_SQUARE, P_ROUND = range(2)
 
-    MOVE_VERTEX, NEAR_VERTEX = range(2)
+    P_SQUARE, P_ROUND = 0, 1
 
-    # The following class variables influence the drawing
-    # of _all_ shape objects.
+    MOVE_VERTEX, NEAR_VERTEX = 0, 1
+
+    # The following class variables influence the drawing of all shape objects.
     line_color = DEFAULT_LINE_COLOR
     fill_color = DEFAULT_FILL_COLOR
     select_line_color = DEFAULT_SELECT_LINE_COLOR
@@ -37,12 +35,11 @@ class Shape(object):
     point_size = 8
     scale = 1.0
 
-    def __init__(self, label=None, line_color=None,difficult = False):
+    def __init__(self, label=None, line_color=None):
         self.label = label
         self.points = []
         self.fill = False
         self.selected = False
-        self.difficult = difficult
 
         self._highlightIndex = None
         self._highlightMode = self.NEAR_VERTEX
@@ -60,15 +57,13 @@ class Shape(object):
             self.line_color = line_color
 
     def close(self):
+        assert len(self.points) > 2, 'Polygon should be created with points >2'
         self._closed = True
 
-    def reachMaxPoints(self):
-        if len(self.points) >= 4:
-            return True
-        return False
-
     def addPoint(self, point):
-        if not self.reachMaxPoints():
+        if self.points and point == self.points[0]:
+            self.close()
+        else:
             self.points.append(point)
 
     def popPoint(self):
@@ -84,20 +79,21 @@ class Shape(object):
 
     def paint(self, painter):
         if self.points:
-            color = self.select_line_color if self.selected else self.line_color
-            pen = QPen(color)
+            color = self.select_line_color \
+                if self.selected else self.line_color
+            pen = QtGui.QPen(color)
             # Try using integer sizes for smoother drawing(?)
             pen.setWidth(max(1, int(round(2.0 / self.scale))))
             painter.setPen(pen)
 
-            line_path = QPainterPath()
-            vrtx_path = QPainterPath()
+            line_path = QtGui.QPainterPath()
+            vrtx_path = QtGui.QPainterPath()
 
             line_path.moveTo(self.points[0])
             # Uncommenting the following line will draw 2 paths
             # for the 1st vertex, and make it non-filled, which
             # may be desirable.
-            #self.drawVertex(vrtx_path, 0)
+            # self.drawVertex(vrtx_path, 0)
 
             for i, p in enumerate(self.points):
                 line_path.lineTo(p)
@@ -108,24 +104,9 @@ class Shape(object):
             painter.drawPath(line_path)
             painter.drawPath(vrtx_path)
             painter.fillPath(vrtx_path, self.vertex_fill_color)
-
-            # Draw text at the top-left
-            min_x = sys.maxsize
-            min_y = sys.maxsize
-            for point in self.points:
-                min_x = min(min_x, point.x())
-                min_y = min(min_y, point.y())
-            if min_x != sys.maxsize and min_y != sys.maxsize:
-                font = QFont()
-                font.setPointSize(8)
-                font.setBold(True)
-                painter.setFont(font)
-                if(self.label == None):
-                    self.label = ""
-                painter.drawText(min_x, min_y, self.label)
-
             if self.fill:
-                color = self.select_fill_color if self.selected else self.fill_color
+                color = self.select_fill_color \
+                    if self.selected else self.fill_color
                 painter.fillPath(line_path, color)
 
     def drawVertex(self, path, i):
@@ -147,16 +128,20 @@ class Shape(object):
             assert False, "unsupported vertex shape"
 
     def nearestVertex(self, point, epsilon):
+        min_distance = float('inf')
+        min_i = None
         for i, p in enumerate(self.points):
-            if distance(p - point) <= epsilon:
-                return i
-        return None
+            dist = distance(p - point)
+            if dist <= epsilon and dist < min_distance:
+                min_distance = dist
+                min_i = i
+        return min_i
 
     def containsPoint(self, point):
         return self.makePath().contains(point)
 
     def makePath(self):
-        path = QPainterPath(self.points[0])
+        path = QtGui.QPainterPath(self.points[0])
         for p in self.points[1:]:
             path.lineTo(p)
         return path
@@ -178,7 +163,7 @@ class Shape(object):
         self._highlightIndex = None
 
     def copy(self):
-        shape = Shape("%s" % self.label)
+        shape = Shape(self.label)
         shape.points = [p for p in self.points]
         shape.fill = self.fill
         shape.selected = self.selected
@@ -187,7 +172,6 @@ class Shape(object):
             shape.line_color = self.line_color
         if self.fill_color != Shape.fill_color:
             shape.fill_color = self.fill_color
-        shape.difficult = self.difficult
         return shape
 
     def __len__(self):

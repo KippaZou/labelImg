@@ -49,7 +49,9 @@ class Canvas(QtWidgets.QWidget):
         self.selectedShape = None  # save the selected shape here
         self.selectedShapeCopy = None
         self.lineColor = QtGui.QColor(0, 0, 255)
-        self.line = Shape(line_color=self.lineColor)
+        self.drawingLineColor = QtGui.QColor(0, 0, 255)
+        self.drawingRectColor = QtGui.QColor(0, 0, 255)
+        self.line = Shape(line_color=self.drawingLineColor)
         self.prevPoint = QtCore.QPointF()
         self.offsets = QtCore.QPointF(), QtCore.QPointF()
         self.scale = 1.0
@@ -67,6 +69,12 @@ class Canvas(QtWidgets.QWidget):
         self.setMouseTracking(True)
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.verified = False
+
+    def setDrawingColor(self, qColor):
+        self.drawingLineColor = qColor
+        print(self.drawingLineColor.getRgb())
+        self.drawingRectColor = qColor
+        self.line.line_color = qColor
 
     def enterEvent(self, ev):
         self.overrideCursor(self._cursor)
@@ -113,7 +121,8 @@ class Canvas(QtWidgets.QWidget):
         if self.drawing():
             self.overrideCursor(CURSOR_DRAW)
             if self.current:
-                color = self.lineColor
+                color = self.drawingLineColor
+                print("a",self.drawingLineColor.getRgb())
                 if self.outOfPixmap(pos):
                     # Don't allow the user to draw outside the pixmap.
                     # Project the point to the pixmap's edges.
@@ -124,10 +133,12 @@ class Canvas(QtWidgets.QWidget):
                     # colorise to alert the user.
                     pos = self.current[0]
                     color = self.current.line_color
+                    print("*********",color.getRgb())
                     self.overrideCursor(CURSOR_POINT)
                     self.current.highlightVertex(0, Shape.NEAR_VERTEX)
                 self.line[1] = pos
                 self.line.line_color = color
+                print("b",self.line.line_color.getRgb())
                 self.repaint()
                 self.current.highlightClear()
             return
