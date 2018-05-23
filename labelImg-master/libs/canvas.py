@@ -13,8 +13,8 @@ except ImportError:
     from PyQt4 import QtGui as QtWidgets
     PYQT5 = False
 
-from labelme.lib import distance
-from labelme.shape import Shape
+from libs.lib import distance
+from libs.shape import Shape
 
 
 # TODO(unknown):
@@ -555,13 +555,11 @@ class Canvas(QtWidgets.QWidget):
 
     def loadPixmap(self, pixmap):
         self.pixmap = pixmap
-        self.shapes = []
+        # self.shapes = []
         self.repaint()
 
     def loadShapes(self, shapes):
         self.shapes = list(shapes)
-        print(len(shapes),"oooo")
-        print(len(self.shapes),"xxx")
         self.current = None
         self.repaint()
 

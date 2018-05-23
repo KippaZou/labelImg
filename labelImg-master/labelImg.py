@@ -730,6 +730,7 @@ class MainWindow(QMainWindow, WindowMixin):
             for x, y in points:
                 shape.addPoint(QPointF(x, y))
             # shape.difficult = difficult
+            self.depth = depth
             shape.close()
             s.append(shape)
 
@@ -942,7 +943,8 @@ class MainWindow(QMainWindow, WindowMixin):
         return a
 
     def readJsonFromMongo(self,imgFileName):
-        r = requests.get("http://127.0.0.1:12345", imgFileName)
+        r = requests.get("http://127.0.0.1:12345", params=imgFileName)
+        print(r.status_code, imgFileName)
         if r.status_code == 404:
             return None, r.status_code
         pic_json_string = r.text
@@ -998,18 +1000,14 @@ class MainWindow(QMainWindow, WindowMixin):
         # Make sure that filePath is a regular python string, rather than QString
         filePath = str(filePath)
         imgFileName = os.path.basename(filePath)
+        print(imgFileName)
         # print(imgFileName)
         if imgFileName:
             a, b = self.readJsonFromMongo(imgFileName)
             if b == 404:
                 self.statusBar().showMessage("没有对应的标注")
-            self.loadLabels(a)
-
-            # req = requests.get(URL, imgFileName)
-            # self.pic_json_string = req.text
-            #
-            # if req.status_code ==404 :
-            #     self.statusBar().showMessage("没有对应的标注")
+            elif b == 200:
+                self.loadLabels(a)
 
 
         unicodeFilePath = ustr(filePath)
