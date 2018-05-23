@@ -396,7 +396,7 @@ class Canvas(QtWidgets.QWidget):
 
         p.drawPixmap(0, 0, self.pixmap)
         Shape.scale = self.scale
-        print(len(self.shapes),86210)
+        # print(len(self.shapes),86210)
         for shape in self.shapes:
             if (shape.selected or not self._hideBackround) and \
                     self.isVisible(shape):

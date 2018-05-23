@@ -729,7 +729,7 @@ class MainWindow(QMainWindow, WindowMixin):
             for x, y in points:
                 shape.addPoint(QPointF(x, y))
             # shape.difficult = difficult
-            # self.depth = depth
+            shape.depth = depth
             shape.close()
             s.append(shape)
 
@@ -747,6 +747,58 @@ class MainWindow(QMainWindow, WindowMixin):
         # print(s)
         self.canvas.loadShapes(s)
     # 保存标注结果为xml
+
+    def float2boundingBox(self, points):
+        a = ""
+        for i in range(len(points)):
+            if i < len(points) - 1:
+                a = a + (str(points[i][0])) + ","
+                a = a + (str(points[i][1])) + ","
+            else:
+                a = a + (str(points[i][0])) + ","
+                a = a + (str(points[i][1]))
+        return a
+
+    def shape2json(self, shape):
+
+        dict = {}
+        firstLayer = 0
+        secondLayer = 0
+        thirdLayer = 0
+        dict['errorCode'] = "0"
+        dict['Result'] = {}
+        dict['Result']['orientation'] = "UP"
+        dict['Result']['regions'] = []
+        for i in range(len(shape)):
+            if len(shape[i]['depth']) == 1:
+                firstLayer += 1
+                dict['Result']['regions'].append({
+                    "boundingBox": self.float2boundingBox(shape[i]['points']),
+                    "lines": []
+                })
+        regions = dict['Result']['regions']
+        for i in range(len(shape)):
+            if len(shape[i]['depth']) == 2:
+                secondLayer += 1
+                j = shape[i]['depth'][0]
+                regions[j]['lines'].append({
+                    "boundingBox": self.float2boundingBox(shape[i]['points']),
+                    "words": [],
+                    "text": shape[i]['label'],
+                    "lang": "zh"
+                })
+
+        for i in range(len(shape)):
+            if len(shape[i]['depth']) == 3:
+                thirdLayer += 1
+                j = shape[i]['depth'][0]
+                k = shape[i]['depth'][1]
+                regions[j]['lines'][k]['words'].append({
+                    "boundingBox": self.float2boundingBox(shape[i]['points']),
+                    "word": shape[i]['label']
+                })
+        return dict
+
     def saveLabels(self, imgFileName):
         imgFileName = ustr(imgFileName)
         if self.labelFile is None:
@@ -755,25 +807,22 @@ class MainWindow(QMainWindow, WindowMixin):
 
         def format_shape(s):
             return dict(label=s.label,
-                        line_color=s.line_color.getRgb(),
-                        fill_color=s.fill_color.getRgb(),
                         points=[(p.x(), p.y()) for p in s.points],
-                       # add chris
-                       #  difficult = s.difficult
+                        depth = s.depth
                         )
         print(type(self.canvas.shapes))
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
-        print(shapes)
+        shapes_dict = self.shape2json(shapes)
         results = {}
         results['imgFileName'] = imgFileName
         # pic_json = dict(
         #
         # )
         # #####################################
-        results['shapes'] = shapes
+        results['shapes'] = shapes_dict
 
         try:
-            # print ('Img: ' + self.filePath + ' -> Its xml: ' + imgFileName)
+            # print(shapes)
             request = requests.post(URL, json=results)
             return (True if request.status_code==200
                     else False)
@@ -942,8 +991,8 @@ class MainWindow(QMainWindow, WindowMixin):
         return a
 
     def readJsonFromMongo(self,imgFileName):
-        r = requests.get("http://127.0.0.1:12345", params=imgFileName)
-        print(r.status_code, imgFileName)
+        r = requests.get("http://127.0.0.1:12345/" + imgFileName)
+        # print(r.status_code, imgFileName)
         if r.status_code == 404:
             return None, r.status_code
         pic_json_string = r.text
@@ -986,7 +1035,7 @@ class MainWindow(QMainWindow, WindowMixin):
                         poi.append((poin[2 * m], poin[2 * m + 1]))
                     labe = words[k]["word"]
                     shapes.append((labe, poi, None, None, dep))
-        print(len(shapes))
+        # print(len(shapes))
         return shapes, r.status_code
 
     def loadFile(self, filePath=None):
@@ -999,7 +1048,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Make sure that filePath is a regular python string, rather than QString
         filePath = str(filePath)
         imgFileName = os.path.basename(filePath)
-        print(imgFileName)
+        # print(imgFileName)
         # print(imgFileName)
         if imgFileName:
             a, b = self.readJsonFromMongo(imgFileName)
