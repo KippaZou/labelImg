@@ -723,7 +723,9 @@ class MainWindow(QMainWindow, WindowMixin):
     # 加载标注
     def loadLabels(self, shapes):
         s = []
-        for label, points, line_color, fill_color in shapes:
+        # print(shapes[0])
+        for label, points, line_color, fill_color, depth in shapes:
+            # print(label,points,fill_color,line_color,depth)
             shape = Shape(label=label)
             for x, y in points:
                 shape.addPoint(QPointF(x, y))
@@ -742,7 +744,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 shape.fill_color = generateColorByText(label)
 
             self.addLabel(shape)
-        #
+        # print(s)
         self.canvas.loadShapes(s)
     # 保存标注结果为xml
     def saveLabels(self, imgFileName):
@@ -929,13 +931,20 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def boundingBox2float(self,boundingBox):
         a = []
+        b = set()
         temp = boundingBox.split(',')
+        for i in range(int(len(temp) / 2)):
+            b.add(temp[i * 2] + temp[i * 2 + 1])
+        if len(b) <= 2:
+            return a
         for i in range(len(temp)):
             a.append(float(temp[i]))
         return a
 
     def readJsonFromMongo(self,imgFileName):
         r = requests.get("http://127.0.0.1:12345", imgFileName)
+        if r.status_code == 404:
+            return None, r.status_code
         pic_json_string = r.text
         pic_json = json.loads(pic_json_string)
         Result = pic_json["Result"]
@@ -946,17 +955,13 @@ class MainWindow(QMainWindow, WindowMixin):
             depth = [i]
             points = []
             point = self.boundingBox2float(regions[i]["boundingBox"])
+            if len(point) ==0 :
+                continue
             lines.append(regions[i]['lines'])
             for k in range(int(len(point) / 2)):
-                points.append([point[2 * k], point[2 * k + 1]])
+                points.append((point[2 * k], point[2 * k + 1]))
             label = ('大框' + str(i))
-            shapes.append(
-                {"depth": depth,
-                 "file_color": None,
-                 "label": label,
-                 "line_color": None,
-                 "points": points}
-            )
+            shapes.append((label, points, None, None, depth))
 
         for i in range(len(lines)):
             for j in range(len(lines[i])):
@@ -964,30 +969,23 @@ class MainWindow(QMainWindow, WindowMixin):
                 points = []
                 point = self.boundingBox2float(lines[i][j]["boundingBox"])
                 words = lines[i][j]["words"]
+                if len(point) == 0:
+                    continue
                 for n in range(int(len(point) / 2)):
-                    points.append([point[2 * n], point[2 * n + 1]])
+                    points.append((point[2 * n], point[2 * n + 1]))
                 label = lines[i][j]['text']
-                shapes.append(
-                    {"depth": depth,
-                     "file_color": None,
-                     "label": label,
-                     "line_color": None,
-                     "points": points}
-                )
+                shapes.append((label, points, None, None, depth))
                 for k in range(len(words)):
                     poi = []
                     dep = [i, j, k]
                     poin = self.boundingBox2float(words[k]["boundingBox"])
+                    if len(poin) == 0:
+                        continue
                     for m in range(int(len(poin) / 2)):
-                        poi.append([poin[2 * m], poin[2 * m + 1]])
+                        poi.append((poin[2 * m], poin[2 * m + 1]))
                     labe = words[k]["word"]
-                    shapes.append(
-                        {"depth": dep,
-                         "file_color": None,
-                         "label": labe,
-                         "line_color": None,
-                         "points": poi}
-                    )
+                    shapes.append((labe, poi, None, None, dep))
+        print(len(shapes))
         return shapes, r.status_code
 
     def loadFile(self, filePath=None):
@@ -1002,7 +1000,11 @@ class MainWindow(QMainWindow, WindowMixin):
         imgFileName = os.path.basename(filePath)
         # print(imgFileName)
         if imgFileName:
-            a,b=self.readJsonFromMongo(imgFileName)
+            a, b = self.readJsonFromMongo(imgFileName)
+            if b == 404:
+                self.statusBar().showMessage("没有对应的标注")
+            self.loadLabels(a)
+
             # req = requests.get(URL, imgFileName)
             # self.pic_json_string = req.text
             #
