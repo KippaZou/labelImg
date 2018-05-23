@@ -725,12 +725,11 @@ class MainWindow(QMainWindow, WindowMixin):
         s = []
         # print(shapes[0])
         for label, points, line_color, fill_color, depth in shapes:
-            # print(label,points,fill_color,line_color,depth)
             shape = Shape(label=label)
             for x, y in points:
                 shape.addPoint(QPointF(x, y))
             # shape.difficult = difficult
-            self.depth = depth
+            # self.depth = depth
             shape.close()
             s.append(shape)
 
