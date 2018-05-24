@@ -646,8 +646,9 @@ class MainWindow(QMainWindow, WindowMixin):
         item = self.currentItem()
         text = self.labelDialog.popUp(item.text())
         if text is not None:
+            print("edit")
             item.setText(text)
-            item.setBackground(generateColorByText(text))
+            # item.setBackground(generateColorByText(text))
             self.setDirty()
 
     # Tzutalin 20160906 : Add file list and dock to move faster
@@ -705,7 +706,7 @@ class MainWindow(QMainWindow, WindowMixin):
         item = HashableQListWidgetItem(shape.label)
         item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
         item.setCheckState(Qt.Checked)
-        item.setBackground(generateColorByText(shape.label))
+        item.setBackground(generateColorByText(shape.label, shape.depth))
         self.itemsToShapes[item] = shape
         self.shapesToItems[shape] = item
         self.labelList.addItem(item)
@@ -726,6 +727,8 @@ class MainWindow(QMainWindow, WindowMixin):
         # print(shapes[0])
         for label, points, line_color, fill_color, depth in shapes:
             shape = Shape(label=label)
+            if len(depth) == 3:
+                shape.hided = True
             for x, y in points:
                 shape.addPoint(QPointF(x, y))
             # shape.difficult = difficult
@@ -736,13 +739,14 @@ class MainWindow(QMainWindow, WindowMixin):
             if line_color:
                 shape.line_color = QColor(*line_color)
             else:
-                shape.line_color = generateColorByText(label)
+                shape.line_color = QColor(0, 0, 255)
 
             if fill_color:
                 shape.fill_color = QColor(*fill_color)
             else:
-                shape.fill_color = generateColorByText(label)
-
+                shape.fill_color = generateColorByText(label, depth)
+            # if len(depth) < 3:
+            #     print("23333")
             self.addLabel(shape)
         # print(s)
         self.canvas.loadShapes(s)
@@ -810,7 +814,7 @@ class MainWindow(QMainWindow, WindowMixin):
                         points=[(p.x(), p.y()) for p in s.points],
                         depth = s.depth
                         )
-        print(type(self.canvas.shapes))
+        # print(type(self.canvas.shapes))
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
         shapes_dict = self.shape2json(shapes)
         results = {}
@@ -849,7 +853,7 @@ class MainWindow(QMainWindow, WindowMixin):
         label = item.text()
         if label != shape.label:
             shape.label = item.text()
-            shape.line_color = generateColorByText(shape.label)
+            shape.line_color = generateColorByText(shape.label, shape.depth)
             self.setDirty()
         else:  # User probably changed item visibility
             self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
@@ -878,7 +882,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # self.diffcButton.setChecked(False)
         if text is not None:
             self.prevLabelText = text
-            generate_color = generateColorByText(text)
+            # generate_color = generateColorByText(text)
             shape = self.canvas.setLastLabel(text)
             self.addLabel(shape)
             if self.beginner():  # Switch to edit mode.
@@ -990,9 +994,18 @@ class MainWindow(QMainWindow, WindowMixin):
             a.append(float(temp[i]))
         return a
 
-    def readJsonFromMongo(self,imgFileName):
+    def checkPoint(self, point,size):
+        for i in range(len(point)):
+            if point[i] <= 0.0:
+                point[i] = 1.0
+        if point[0] >= size.width():
+            point[0] = size.width()-1.0
+        if point[1] >= size.height():
+            point[1] = size.height()-1.0
+        return (point[0],point[1])
+
+    def readJsonFromMongo(self,imgFileName, size):
         r = requests.get("http://127.0.0.1:12345/" + imgFileName)
-        # print(r.status_code, imgFileName)
         if r.status_code == 404:
             return None, r.status_code
         pic_json_string = r.text
@@ -1009,7 +1022,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 continue
             lines.append(regions[i]['lines'])
             for k in range(int(len(point) / 2)):
-                points.append((point[2 * k], point[2 * k + 1]))
+                points.append(self.checkPoint([point[2 * k], point[2 * k + 1]],size))
             label = ('大框' + str(i))
             shapes.append((label, points, None, None, depth))
 
@@ -1018,13 +1031,16 @@ class MainWindow(QMainWindow, WindowMixin):
                 depth = [i, j]
                 points = []
                 point = self.boundingBox2float(lines[i][j]["boundingBox"])
-                words = lines[i][j]["words"]
                 if len(point) == 0:
                     continue
                 for n in range(int(len(point) / 2)):
-                    points.append((point[2 * n], point[2 * n + 1]))
+                    points.append([point[2 * n], point[2 * n + 1]])
                 label = lines[i][j]['text']
                 shapes.append((label, points, None, None, depth))
+
+        for i in range(len(lines)):
+            for j in range(len(lines[i])):
+                words = lines[i][j]["words"]
                 for k in range(len(words)):
                     poi = []
                     dep = [i, j, k]
@@ -1032,10 +1048,9 @@ class MainWindow(QMainWindow, WindowMixin):
                     if len(poin) == 0:
                         continue
                     for m in range(int(len(poin) / 2)):
-                        poi.append((poin[2 * m], poin[2 * m + 1]))
+                        poi.append([poin[2 * m], poin[2 * m + 1]])
                     labe = words[k]["word"]
                     shapes.append((labe, poi, None, None, dep))
-        # print(len(shapes))
         return shapes, r.status_code
 
     def loadFile(self, filePath=None):
@@ -1048,14 +1063,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Make sure that filePath is a regular python string, rather than QString
         filePath = str(filePath)
         imgFileName = os.path.basename(filePath)
-        # print(imgFileName)
-        # print(imgFileName)
-        if imgFileName:
-            a, b = self.readJsonFromMongo(imgFileName)
-            if b == 404:
-                self.statusBar().showMessage("没有对应的标注")
-            elif b == 200:
-                self.loadLabels(a)
+
 
 
         unicodeFilePath = ustr(filePath)
@@ -1065,6 +1073,7 @@ class MainWindow(QMainWindow, WindowMixin):
             index = self.mImgList.index(unicodeFilePath)
             fileWidgetItem = self.fileListWidget.item(index)
             fileWidgetItem.setSelected(True)
+
 
         if unicodeFilePath and os.path.exists(unicodeFilePath):
             if LabelFile.isLabelFile(unicodeFilePath):
@@ -1078,8 +1087,6 @@ class MainWindow(QMainWindow, WindowMixin):
                     self.status("Error reading %s" % unicodeFilePath)
                     return False
                 self.imageData = self.labelFile.imageData
-                # self.lineColor = QColor(*self.labelFile.lineColor)
-                # self.fillColor = QColor(*self.labelFile.fillColor)
             else:
                 # Load image:
                 # read data first and store for saving into label file.
@@ -1096,6 +1103,15 @@ class MainWindow(QMainWindow, WindowMixin):
             self.image = image
             self.filePath = unicodeFilePath
             self.canvas.loadPixmap(QPixmap.fromImage(image))
+            if imgFileName:
+                # print(self.canvas.pixmap.size().height())
+                size = self.canvas.pixmap.size()
+                a, b = self.readJsonFromMongo(imgFileName, size)
+                if b == 404:
+                    self.statusBar().showMessage("没有对应的标注")
+                elif b == 200:
+                    self.loadLabels(a)
+
             # if self.labelFile:
             #     self.loadLabels(self.labelFile.shapes)#
             self.setClean()
@@ -1113,7 +1129,9 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.labelList.item(self.labelList.count()-1).setSelected(True)
 
             self.canvas.setFocus(True)
+
             return True
+
         return False
 
     def resizeEvent(self, event):
@@ -1303,28 +1321,10 @@ class MainWindow(QMainWindow, WindowMixin):
             self.loadFile(filename)
     # 保存标注结果，到本地
     def saveFile(self, _value=False):
-        # 如果设置了默认保存路径，则点击保存后就保存到了相应路径。
-        # if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
         if self.filePath:
             # 返回文件名。eg:path="D:\CSDN",os.path.basename(path)=CSDN
             imgFileName = os.path.basename(self.filePath)
-            # savedFileName = os.path.splitext(imgFileName)[0]
-            # print(savedFileName)
-            print(imgFileName)
-            # savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
             self._saveFile(imgFileName)
-        # 如果没有设置，则直接保存在图片统一文件夹下。
-        # else:
-        #     imgFileDir = os.path.dirname(self.filePath)
-        #     imgFileName = os.path.basename(self.filePath)
-        #     savedFileName = os.path.splitext(imgFileName)[0]
-        #     savedPath = os.path.join(imgFileDir, savedFileName)
-        #     self._saveFile(savedPath if self.labelFile
-        #                    else self.saveFileDialog())
-
-    # def saveFileAs(self, _value=False):
-    #     assert not self.image.isNull(), "cannot save empty image"
-    #     self._saveFile(self.saveFileDialog())
 
     def saveFileDialog(self):
         caption = '%s - Choose File' % __appname__
@@ -1355,13 +1355,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.setClean()
         self.toggleActions(False)
         self.canvas.setEnabled(False)
-        # self.actions.saveAs.setEnabled(False)
-
-    # def resetAll(self):
-    #     self.settings.reset()
-    #     self.close()
-    #     proc = QProcess()
-    #     proc.startDetached(os.path.abspath(__file__))
 
     def mayContinue(self):
         return not (self.dirty and not self.discardChangesDialog())

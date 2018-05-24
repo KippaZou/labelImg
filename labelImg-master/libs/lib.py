@@ -74,7 +74,16 @@ def fmtShortcut(text):
     return '<b>%s</b>+<b>%s</b>' % (mod, key)
 
 
-def generateColorByText(text):
+def generateColorByText(text, depth):
+    if depth :
+        if len(depth) == 3:
+            return QColor(255, 255, 255, 128)
+        if len(depth) == 2:
+            return QColor(49, 200, 22, 128)
+        if len(depth) == 1:
+            return QColor(200, 14, 185, 128)
+    if not depth :
+        return QColor(49, 200, 22, 128)
     s = str(ustr(text))
     hashCode = int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16)
     r = int((hashCode / 255) % 255)

@@ -56,10 +56,11 @@ class Shape(object):
     point_size = 8
     scale = 1.0
 
-    def __init__(self, label=None, line_color=None, depth=None):
+    def __init__(self, label=None, line_color=None, depth=[0,0]):
         self.label = label
         self.points = []
         self.fill = False
+        self.hided = False
         self.selected = False
         self.depth = depth
         self._highlightIndex = None

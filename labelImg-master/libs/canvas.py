@@ -72,8 +72,12 @@ class Canvas(QtWidgets.QWidget):
 
     def setDrawingColor(self, qColor):
         self.drawingLineColor = qColor
+
         # print(self.drawingLineColor.getRgb())
         self.drawingRectColor = qColor
+        for shape in self.shapes:
+            shape.line_color = qColor
+        self.repaint()
         # self.line.line_color = qColor
         # self.lineColor = qColor
         # self.current.line_color = qColor
@@ -398,10 +402,15 @@ class Canvas(QtWidgets.QWidget):
         Shape.scale = self.scale
         # print(len(self.shapes),86210)
         for shape in self.shapes:
-            if (shape.selected or not self._hideBackround) and \
-                    self.isVisible(shape):
-                shape.fill = shape.selected or shape == self.hShape
-                shape.paint(p)
+            if not shape.hided:
+                if (shape.selected or not self._hideBackround) and \
+                        self.isVisible(shape):
+                    shape.fill = shape.selected or shape == self.hShape
+                    shape.paint(p)
+            # if (shape.selected or not self._hideBackround) and \
+            #         self.isVisible(shape):
+            #     shape.fill = shape.selected or shape == self.hShape
+            #     shape.paint(p)
         if self.current:
             self.current.line_color=self.drawingLineColor
             self.current.paint(p)
@@ -448,6 +457,7 @@ class Canvas(QtWidgets.QWidget):
         # and find the one intersecting the current line segment.
         # http://paulbourke.net/geometry/lineline2d/
         size = self.pixmap.size()
+        # print(size.width(),size.height())
         points = [(0, 0),
                   (size.width(), 0),
                   (size.width(), size.height()),
