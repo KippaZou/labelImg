@@ -9,7 +9,7 @@ import sys
 import subprocess
 from functools import partial
 from collections import defaultdict
-URL = 'http://127.0.0.1:12345'
+URL = 'http://192.168.0.103:12345'
 try:
     from PyQt5.QtGui import *
     from PyQt5.QtCore import *
@@ -1005,7 +1005,7 @@ class MainWindow(QMainWindow, WindowMixin):
         return (point[0],point[1])
 
     def readJsonFromMongo(self,imgFileName, size):
-        r = requests.get("http://127.0.0.1:12345/" + imgFileName)
+        r = requests.get("http://192.168.0.103:12345/" + imgFileName)
         if r.status_code == 404:
             return None, r.status_code
         pic_json_string = r.text
@@ -1015,28 +1015,7 @@ class MainWindow(QMainWindow, WindowMixin):
         lines = []
         shapes = []
         for i in range(len(regions)):
-            depth = [i]
-            points = []
-            point = self.boundingBox2float(regions[i]["boundingBox"])
-            if len(point) ==0 :
-                continue
             lines.append(regions[i]['lines'])
-            for k in range(int(len(point) / 2)):
-                points.append(self.checkPoint([point[2 * k], point[2 * k + 1]],size))
-            label = ('大框' + str(i))
-            shapes.append((label, points, None, None, depth))
-
-        for i in range(len(lines)):
-            for j in range(len(lines[i])):
-                depth = [i, j]
-                points = []
-                point = self.boundingBox2float(lines[i][j]["boundingBox"])
-                if len(point) == 0:
-                    continue
-                for n in range(int(len(point) / 2)):
-                    points.append([point[2 * n], point[2 * n + 1]])
-                label = lines[i][j]['text']
-                shapes.append((label, points, None, None, depth))
 
         for i in range(len(lines)):
             for j in range(len(lines[i])):
@@ -1051,6 +1030,29 @@ class MainWindow(QMainWindow, WindowMixin):
                         poi.append([poin[2 * m], poin[2 * m + 1]])
                     labe = words[k]["word"]
                     shapes.append((labe, poi, None, None, dep))
+        for i in range(len(regions)):
+            depth = [i]
+            points = []
+            point = self.boundingBox2float(regions[i]["boundingBox"])
+            if len(point) == 0:
+                continue
+
+            for k in range(int(len(point) / 2)):
+                points.append([point[2 * k], point[2 * k + 1]])
+            label = ('大框' + str(i))
+            shapes.append((label, points, None, None, depth))
+
+        for i in range(len(lines)):
+            for j in range(len(lines[i])):
+                depth = [i, j]
+                points = []
+                point = self.boundingBox2float(lines[i][j]["boundingBox"])
+                if len(point) == 0:
+                    continue
+                for n in range(int(len(point) / 2)):
+                    points.append([point[2 * n], point[2 * n + 1]])
+                label = lines[i][j]['text']
+                shapes.append((label, points, None, None, depth))
         return shapes, r.status_code
 
     def loadFile(self, filePath=None):
@@ -1361,7 +1363,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def discardChangesDialog(self):
         yes, no = QMessageBox.Yes, QMessageBox.No
-        msg = u'You have unsaved changes, proceed anyway?'
+        msg = u'进行了变更，是否不保存就离开?'
         return yes == QMessageBox.warning(self, u'Attention', msg, yes | no)
 
     def errorMessage(self, title, message):
