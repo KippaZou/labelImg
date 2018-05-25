@@ -1425,6 +1425,66 @@ class MainWindow(QMainWindow, WindowMixin):
                     else:
                         self.labelHist.append(line)
 
+
+class LoginDialog(QDialog):
+
+
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+
+
+        self.setWindowTitle(u'登录')
+        self.resize(300, 150)
+
+        self.leName = QLineEdit(self)
+        self.leName.setPlaceholderText(u'用户名')
+
+        self.lePassword = QLineEdit(self)
+        self.lePassword.setEchoMode(QLineEdit.Password)
+        self.lePassword.setPlaceholderText(u'密码')
+
+        self.pbLogin = QPushButton(u'登录', self)
+        self.pbCancel = QPushButton(u'取消', self)
+
+        self.pbLogin.clicked.connect(self.login)
+        self.pbCancel.clicked.connect(self.reject)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.leName)
+        layout.addWidget(self.lePassword)
+
+        # 放一个间隔对象美化布局
+        spacerItem = QSpacerItem(20, 48, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        layout.addItem(spacerItem)
+
+        # 按钮布局
+        buttonLayout = QHBoxLayout()
+        # 左侧放一个间隔
+        spancerItem2 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        buttonLayout.addItem(spancerItem2)
+        buttonLayout.addWidget(self.pbLogin)
+        buttonLayout.addWidget(self.pbCancel)
+
+        layout.addLayout(buttonLayout)
+
+        self.setLayout(layout)
+
+
+    def login(self):
+        print ('login')
+        if self.leName.text() == 'admin' and self.lePassword.text() == 'jimmykuu':
+            self.accept()  # 关闭对话框并返回1
+        else:
+            QMessageBox.critical(self, u'错误', u'用户名密码不匹配')
+def login():
+    """返回True或False"""
+    dialog = LoginDialog()
+    if dialog.exec_():
+        return True
+    else:
+        return False
+
+
 def inverted(color):
     return QColor(*[255 - v for v in color.getRgb()])
 
@@ -1447,12 +1507,14 @@ def get_main_app(argv=[]):
     app.setWindowIcon(newIcon("app"))
     # Tzutalin 201705+: Accept extra agruments to change predefined class file
     # Usage : labelImg.py image predefClassFile
-    win = MainWindow(argv[1] if len(argv) >= 2 else None,
-                     argv[2] if len(argv) >= 3 else os.path.join(
-                         os.path.dirname(sys.argv[0]),
-                         'data', 'predefined_classes.txt'))
-    win.show()
-    return app, win
+    if login():
+
+        win = MainWindow(argv[1] if len(argv) >= 2 else None,
+                         argv[2] if len(argv) >= 3 else os.path.join(
+                             os.path.dirname(sys.argv[0]),
+                             'data', 'predefined_classes.txt'))
+        win.show()
+        return app, win
 
 
 
