@@ -4,12 +4,13 @@ import codecs
 import requests
 import os.path
 import json
+import hashlib
 import re
 import sys
 import subprocess
 from functools import partial
 from collections import defaultdict
-URL = 'http://192.168.0.103:12345'
+URL = 'http://127.0.0.1:12345'
 try:
     from PyQt5.QtGui import *
     from PyQt5.QtCore import *
@@ -52,6 +53,7 @@ __appname__ = 'labelImg1.0'
 XML_EXT = '.xml'
 ENCODE_METHOD = 'utf-8'
 TXT_EXT = '.txt'
+cookies = {}
 # Utility functions and classes.
 
 def have_qstring():
@@ -827,7 +829,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         try:
             # print(shapes)
-            request = requests.post(URL, json=results)
+            request = requests.post(URL, json=results, cookies = cookies)
             return (True if request.status_code==200
                     else False)
         except :
@@ -1005,7 +1007,7 @@ class MainWindow(QMainWindow, WindowMixin):
         return (point[0],point[1])
 
     def readJsonFromMongo(self,imgFileName, size):
-        r = requests.get("http://192.168.0.103:12345/" + imgFileName)
+        r = requests.request("get","http://127.0.0.1:12345/" + imgFileName, cookies = cookies)
         if r.status_code == 404:
             return None, r.status_code
         pic_json_string = r.text
@@ -1469,16 +1471,30 @@ class LoginDialog(QDialog):
 
         self.setLayout(layout)
 
+    def md5(self, password):
+        hl = hashlib.md5()
+        hl.update(password.encode(encoding='utf-8'))
+        return hl.hexdigest()
 
     def login(self):
-        print ('login')
-        if self.leName.text() == 'admin' and self.lePassword.text() == 'jimmykuu':
-            self.accept()  # 关闭对话框并返回1
+        # print ('login')
+        data = {
+            'login' : self.leName.text(),
+            'password' : self.md5(self.lePassword.text())
+        }
+        r = requests.request('post', 'http://127.0.0.1:12345/login', json = data)
+        if r.text == "Login Succeed":
+            global cookies
+            cookies = r.cookies.get_dict()
+            print(cookies)
+            self.accept()
+
         else:
             QMessageBox.critical(self, u'错误', u'用户名密码不匹配')
 def login():
     """返回True或False"""
     dialog = LoginDialog()
+
     if dialog.exec_():
         return True
     else:
@@ -1514,6 +1530,7 @@ def get_main_app(argv=[]):
                              os.path.dirname(sys.argv[0]),
                              'data', 'predefined_classes.txt'))
         win.show()
+        # print(cookies)
         return app, win
 
 
