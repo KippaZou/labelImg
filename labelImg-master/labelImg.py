@@ -10,7 +10,7 @@ import sys
 import subprocess
 from functools import partial
 from collections import defaultdict
-URL = 'http://127.0.0.1:12345'
+
 try:
     from PyQt5.QtGui import *
     from PyQt5.QtCore import *
@@ -54,6 +54,8 @@ XML_EXT = '.xml'
 ENCODE_METHOD = 'utf-8'
 TXT_EXT = '.txt'
 cookies = {}
+URL = 'http://127.0.0.1:12345'
+LoginURL = 'http://127.0.0.1:12345/login'
 # Utility functions and classes.
 
 def have_qstring():
@@ -1004,10 +1006,11 @@ class MainWindow(QMainWindow, WindowMixin):
             point[0] = size.width()-1.0
         if point[1] >= size.height():
             point[1] = size.height()-1.0
-        return (point[0],point[1])
+        return [point[0],point[1]]
 
     def readJsonFromMongo(self,imgFileName, size):
-        r = requests.request("get","http://127.0.0.1:12345/" + imgFileName, cookies = cookies)
+
+        r = requests.request("get",URL+'/' + imgFileName, cookies = cookies)
         if r.status_code == 404:
             return None, r.status_code
         pic_json_string = r.text
@@ -1023,15 +1026,15 @@ class MainWindow(QMainWindow, WindowMixin):
             for j in range(len(lines[i])):
                 words = lines[i][j]["words"]
                 for k in range(len(words)):
-                    poi = []
+                    points = []
                     dep = [i, j, k]
-                    poin = self.boundingBox2float(words[k]["boundingBox"])
-                    if len(poin) == 0:
+                    point = self.boundingBox2float(words[k]["boundingBox"])
+                    if len(point) == 0:
                         continue
-                    for m in range(int(len(poin) / 2)):
-                        poi.append([poin[2 * m], poin[2 * m + 1]])
+                    for m in range(int(len(point) / 2)):
+                        points.append(self.checkPoint([point[2 * m], point[2 * m + 1]],size))
                     labe = words[k]["word"]
-                    shapes.append((labe, poi, None, None, dep))
+                    shapes.append((labe, points, None, None, dep))
         for i in range(len(regions)):
             depth = [i]
             points = []
@@ -1040,7 +1043,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 continue
 
             for k in range(int(len(point) / 2)):
-                points.append([point[2 * k], point[2 * k + 1]])
+                points.append(self.checkPoint([point[2 * k], point[2 * m + 1]], size))
             label = ('大框' + str(i))
             shapes.append((label, points, None, None, depth))
 
@@ -1052,7 +1055,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 if len(point) == 0:
                     continue
                 for n in range(int(len(point) / 2)):
-                    points.append([point[2 * n], point[2 * n + 1]])
+                    points.append(self.checkPoint([point[2 * n], point[2 * m + 1]], size))
                 label = lines[i][j]['text']
                 shapes.append((label, points, None, None, depth))
         return shapes, r.status_code
@@ -1478,19 +1481,25 @@ class LoginDialog(QDialog):
 
     def login(self):
         # print ('login')
+        if self.leName.text is None or self.lePassword.text is None:
+            QMessageBox.critical(self, u'错误',u'账号和密码不能为空')
         data = {
             'login' : self.leName.text(),
             'password' : self.md5(self.lePassword.text())
         }
-        r = requests.request('post', 'http://127.0.0.1:12345/login', json = data)
-        if r.text == "Login Succeed":
-            global cookies
-            cookies = r.cookies.get_dict()
-            print(cookies)
-            self.accept()
+        try:
+            r = requests.request('post', LoginURL, json = data)
+            if r.text == "Login Succeed":
+                global cookies
+                cookies = r.cookies.get_dict()
+                # print(cookies)
+                self.accept()
+            else:
+                QMessageBox.critical(self, u'错误', u'用户名密码不匹配')
+        except:
+            QMessageBox.critical(self, u'错误', u'无法连接到服务器')
 
-        else:
-            QMessageBox.critical(self, u'错误', u'用户名密码不匹配')
+
 def login():
     """返回True或False"""
     dialog = LoginDialog()
