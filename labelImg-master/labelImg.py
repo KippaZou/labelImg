@@ -1043,7 +1043,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 continue
 
             for k in range(int(len(point) / 2)):
-                points.append(self.checkPoint([point[2 * k], point[2 * m + 1]], size))
+                points.append(self.checkPoint([point[2 * k], point[2 * k + 1]], size))
             label = ('大框' + str(i))
             shapes.append((label, points, None, None, depth))
 
@@ -1055,7 +1055,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 if len(point) == 0:
                     continue
                 for n in range(int(len(point) / 2)):
-                    points.append(self.checkPoint([point[2 * n], point[2 * m + 1]], size))
+                    points.append(self.checkPoint([point[2 * n], point[2 * n + 1]], size))
                 label = lines[i][j]['text']
                 shapes.append((label, points, None, None, depth))
         return shapes, r.status_code
